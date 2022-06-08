@@ -1,9 +1,11 @@
-import React, {memo, useCallback, useEffect, useRef, useState} from 'react';
+import React, {memo, useCallback, useRef, useState, useEffect} from 'react';
 import {Slider} from 'antd';
 import {PlaybarWrapper, Control, PlayInfo, Operator} from './style';
 import {getPlayUrl, formatDate} from '@/utils/format-utils';
+import {NavLink} from 'react-router-dom';
 
 const HYAppPlayerBar = memo(() => {
+  const currentSong = 29004400;
   const duration = 321000; // 接口失效，固定歌曲时长
   const showDuration = formatDate(duration, 'mm:ss');
   // props and state
@@ -12,43 +14,73 @@ const HYAppPlayerBar = memo(() => {
   const showCurrentTime = formatDate(currentTime, 'mm:ss');
   // 控制进度条组件的进度
   const [progress, setProgress] = useState(0);
+  // 通过第三方变量来控制是歌曲自动播放设置进度还是人为手动拖动
+  const [isChanging, setIsChanging] = useState(false);
+  // 控制是否正在播放
+  const [isPlaying, setIsPlaying] = useState(false);
   // const progress = (currentTime / duration) * 100;
   // other hooks
   const audioRef = useRef();
 
   // handle
-  const playMusic = () => {
-    audioRef.current.src = getPlayUrl(29004400);
-    audioRef.current.play();
-  };
+  const playMusic = useCallback(() => {
+    isPlaying ? audioRef.current.pause() : audioRef.current.play();
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+  useEffect(() => {
+    audioRef.current.src = getPlayUrl(currentSong);
+  }, [currentSong]);
+
   // audio 的进度改变事件
   const timeUpdate = e => {
-    setCurrentTime(e.target.currentTime * 1000);
-    setProgress((currentTime / duration) * 1000);
+    if (!isChanging) {
+      setCurrentTime(e.target.currentTime * 1000);
+      setProgress((currentTime / duration) * 100); // 设置的是百分之多少
+    }
   };
   // ant进度条事件
-  const sliderChange = useCallback(value => {
-    console.log('change', value);
-  }, []);
-  const sliderAfterChange = useCallback(value => {
-    console.log('end', value);
-  }, []);
+  const sliderChange = useCallback(
+    value => {
+      setIsChanging(true);
+      // 滑动时让滑动时间跟随改变
+      const currentTime = (value / 100) * duration;
+      setCurrentTime(currentTime);
+      setProgress(value);
+      // console.log('change', value);
+    },
+    [duration]
+  );
+  const sliderAfterChange = useCallback(
+    value => {
+      const currentTime = ((value / 100) * duration) / 1000; // 获取到的是毫秒，需要的是秒
+      audioRef.current.currentTime = currentTime;
+      // 解决进度条闪烁
+      setCurrentTime(currentTime * 1000);
+      setIsChanging(false);
+      // console.log('end', value);
+      if (!isPlaying) {
+        // 滑动后让歌曲自动播放
+        playMusic();
+      }
+    },
+    [duration, isPlaying, playMusic]
+  );
   return (
     <PlaybarWrapper className='sprite_player'>
       <div className='content wrap-v2'>
-        <Control>
+        <Control isPlaying={isPlaying}>
           <button className='sprite_player prev'></button>
           <button className='sprite_player play' onClick={e => playMusic()}></button>
           <button className='sprite_player next'></button>
         </Control>
         <PlayInfo>
           <div className='image'>
-            <a href='/#'>
+            <NavLink to='/discover/player'>
               <img
                 src='https://p1.music.126.net/_49Xz_x9kTTdEgmYYk6w2w==/6672936069046297.jpg?param=34y34'
                 alt=''
               />
-            </a>
+            </NavLink>
           </div>
           <div className='info'>
             <div className='song'>
