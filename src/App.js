@@ -1,4 +1,4 @@
-import React, {memo} from 'react';
+import React, {memo, Suspense} from 'react';
 import {useRoutes} from 'react-router-dom';
 import {Provider} from 'react-redux';
 import routes from '@/router';
@@ -12,7 +12,8 @@ const App = memo(() => {
   return (
     <Provider store={store}>
       <HYAppHeader></HYAppHeader>
-      <div>{useRoutes(routes)}</div>
+      {/* fallback 可以传入一个组件 */}
+      <Suspense fallback={<div>page loading</div>}>{useRoutes(routes)}</Suspense>
       <HYAppFooter></HYAppFooter>
       <HYAppPlayerBar></HYAppPlayerBar>
     </Provider>
